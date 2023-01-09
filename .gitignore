@@ -1,0 +1,14 @@
+.nfs*
+*.pyc
+.DS_Store
+*.pth
+**/__pycache__/**
+.vscode
+temp.py
+tmp.py
+images/
+logs/
+data/**
+runs/
+**.log
+*.ckpt
