@@ -2,6 +2,9 @@ import pyrootutils
 
 root = pyrootutils.setup_root(__file__, pythonpath=True)
 
+import json
+import os 
+from pathlib import Path
 from typing import List, Tuple
 
 import hydra
@@ -12,6 +15,11 @@ from pytorch_lightning.loggers import LightningLoggerBase
 from src import utils
 
 log = utils.get_pylogger(__name__)
+
+ml_root = Path("/opt/ml")
+
+model_artifacts = ml_root / "processing" / "model"
+dataset_dir = ml_root / "processing" / "test"
 
 
 @utils.task_wrapper
@@ -25,14 +33,19 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
         Tuple[dict, dict]: Dict with metrics and dict with all instantiated objects.
     """
 
-    assert cfg.ckpt_path
-
     log.info(f"Instantiating datamodule <{cfg.datamodule._target_}>")
+    
+    cfg.datamodule.train_data_dir = dataset_dir.absolute()
+    cfg.datamodule.test_data_dir = dataset_dir.absolute()
+    cfg.datamodule.val_data_dir = dataset_dir.absolute()
+    cfg.datamodule.num_workers = os.cpu_count()
+    
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
     model: LightningModule = hydra.utils.instantiate(cfg.model)
-
+    model.load_state_dict("last.ckpt")
+    
     log.info("Instantiating loggers...")
     logger: List[LightningLoggerBase] = utils.instantiate_loggers(cfg.get("logger"))
 
@@ -54,12 +67,29 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
     log.info("Starting testing!")
     trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
 
-    # for predictions use trainer.predict(...)
-    # predictions = trainer.predict(model=model, dataloaders=dataloaders, ckpt_path=cfg.ckpt_path)
-
-    metric_dict = trainer.callback_metrics
-    utils.calc_metric(model, datamodule)
+    test_res = trainer.callback_metrics
+    metric_dict = utils.calc_metric(model, datamodule)
     
+    report_dict = {
+        "multiclass_classification_metrics": {
+            "accuracy": {
+                "value": test_res["test/acc"],
+                "standard_deviation": "0",
+            },
+            **metric_dict
+        },
+    }
+    
+    eval_folder = ml_root / "processing" / "evaluation"
+    eval_folder.mkdir(parents=True, exist_ok=True)
+    
+    out_path = eval_folder / "evaluation.json"
+    
+    print(f":: Writing to {out_path.absolute()}")
+    
+    with out_path.open("w") as f:
+        f.write(json.dumps(report_dict))
+        
     return metric_dict, object_dict
 
 
