@@ -56,8 +56,6 @@ class IntelImgClfDataModule(pl.LightningDataModule):
         self.test_data_dir = test_data_dir
         self.val_data_dir = val_data_dir
         
-        self.dataset_extracted.mkdir(parents=True, exist_ok=True)
-
         # data transformations
         self.train_transforms = A.Compose(
             [
