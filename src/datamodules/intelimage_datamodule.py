@@ -39,7 +39,9 @@ class IntelImageDataset(Dataset):
 class IntelImgClfDataModule(pl.LightningDataModule):
     def __init__(
         self,
-        root_data_dir: str = "data/",
+        train_data_dir: str = "data/",
+        test_data_dir: str = "data/",
+        val_data_dir: str = "data/",
         batch_size: int = 256,
         num_workers: int = 0,
         pin_memory: bool = False,
@@ -49,12 +51,11 @@ class IntelImgClfDataModule(pl.LightningDataModule):
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
-
-        self.root_data_dir = Path(root_data_dir)
-        self.dataset_zip = self.root_data_dir / "intel_imageclf.zip"
-        self.dataset_extracted = self.root_data_dir / "intel-image-classification"
-        self.dataset_dir = self.root_data_dir / "intel-image-classification" / "dataset"
-
+        
+        self.train_data_dir = train_data_dir
+        self.test_data_dir = test_data_dir
+        self.val_data_dir = val_data_dir
+        
         self.dataset_extracted.mkdir(parents=True, exist_ok=True)
 
         # data transformations
@@ -93,47 +94,44 @@ class IntelImgClfDataModule(pl.LightningDataModule):
     def idx_to_class(self) -> dict:
         return {k: v for v, k in self.data_train.class_to_idx.items()}
 
-    def prepare_data(self):
+    def prepare_data(self, dataset_zip: Path, storage_dir: Path):
         """Download data if needed.
         Do not use it to assign state (self.x = y).
         """
+        dataset_extracted = dataset_zip.parent / "intel-image-classification"
 
-        if not self.dataset_dir.exists():
-            # split dataset and save to their directories
-            print(f":: Extracting Zip {self.dataset_zip} to {self.dataset_extracted}")
-            extract_archive(from_path=self.dataset_zip, to_path=self.dataset_extracted)
+        # split dataset and save to their directories
+        print(f":: Extracting Zip {dataset_zip} to {dataset_extracted}")
+        extract_archive(from_path=dataset_zip, to_path=dataset_extracted)
 
-            ds = list((self.dataset_extracted / "seg_train" / "seg_train").glob("*/*"))
-            ds += list((self.dataset_extracted / "seg_test" / "seg_test").glob("*/*"))
-            d_pred = list((self.dataset_extracted / "seg_pred" / "seg_pred").glob("*/"))
+        ds = list((dataset_extracted / "seg_train" / "seg_train").glob("*/*"))
+        ds += list((dataset_extracted / "seg_test" / "seg_test").glob("*/*"))
 
-            labels = [x.parent.stem for x in ds]
-            print(":: Dataset Class Counts: ", Counter(labels))
+        labels = [x.parent.stem for x in ds]
+        print(":: Dataset Class Counts: ", Counter(labels))
 
-            d_train, d_test = train_test_split(ds, test_size=0.3, stratify=labels)
-            d_test, d_val = train_test_split(
-                d_test, test_size=0.5, stratify=[x.parent.stem for x in d_test]
-            )
+        d_train, d_test = train_test_split(ds, test_size=0.3, stratify=labels)
+        d_test, d_val = train_test_split(
+            d_test, test_size=0.5, stratify=[x.parent.stem for x in d_test]
+        )
 
-            print(
-                "\t:: Train Dataset Class Counts: ",
-                Counter(x.parent.stem for x in d_train),
-            )
-            print(
-                "\t:: Test Dataset Class Counts: ",
-                Counter(x.parent.stem for x in d_test),
-            )
-            print(
-                "\t:: Val Dataset Class Counts: ", Counter(x.parent.stem for x in d_val)
-            )
+        print(
+            "\t:: Train Dataset Class Counts: ",
+            Counter(x.parent.stem for x in d_train),
+        )
+        print(
+            "\t:: Test Dataset Class Counts: ",
+            Counter(x.parent.stem for x in d_test),
+        )
+        print(
+            "\t:: Val Dataset Class Counts: ", Counter(x.parent.stem for x in d_val)
+        )
 
-            print(":: Writing Datasets")
-            write_dataset(d_train, self.dataset_dir / "train")
-            write_dataset(d_test, self.dataset_dir / "test")
-            write_dataset(d_val, self.dataset_dir / "val")
-            write_dataset(d_pred, self.dataset_dir / "pred")
-        else:
-            print(":: Skipping dataset exists")
+        print(":: Writing Datasets")
+        write_dataset(d_train, storage_dir / "dataset" / "train")
+        write_dataset(d_test, storage_dir / "dataset" / "test")
+        write_dataset(d_val, storage_dir / "dataset" / "val")
+        
 
     def setup(self, stage: Optional[str] = None):
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
@@ -143,9 +141,9 @@ class IntelImgClfDataModule(pl.LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_test:
-            trainset = ImageFolder(self.dataset_dir / "train")
-            testset = ImageFolder(self.dataset_dir / "test")
-            valset = ImageFolder(self.dataset_dir / "val")
+            trainset = ImageFolder(self.train_data_dir)
+            testset = ImageFolder(self.test_data_dir)
+            valset = ImageFolder(self.val_data_dir)
 
             self.data_train, self.data_test, self.data_val = trainset, testset, valset
 
