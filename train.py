@@ -2,10 +2,14 @@ import pyrootutils
 
 root = pyrootutils.setup_root(__file__, pythonpath=True)
 
+import os
+import json
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 import hydra
 import pytorch_lightning as pl
+import torch
 from omegaconf import DictConfig
 from pytorch_lightning import Callback, LightningDataModule, LightningModule, Trainer
 from pytorch_lightning.loggers import LightningLoggerBase
@@ -13,6 +17,23 @@ from pytorch_lightning.loggers import LightningLoggerBase
 from src import utils
 
 log = utils.get_pylogger(__name__)
+
+ml_root = Path("/opt/ml")
+
+sm_output_dir = Path(os.environ.get("SM_OUTPUT_DIR"))
+sm_model_dir = Path(os.environ.get("SM_MODEL_DIR"))
+num_cpus = int(os.environ.get("SM_NUM_CPUS"))
+
+train_channel = os.environ.get("SM_CHANNEL_TRAIN")
+test_channel = os.environ.get("SM_CHANNEL_TEST")
+val_channel = os.environ.get("SM_CHANNEL_VAL")
+
+
+def get_training_env():
+    sm_training_env = os.environ.get("SM_TRAINING_ENV")
+    sm_training_env = json.loads(sm_training_env)
+    
+    return sm_training_env
 
 
 @utils.task_wrapper
@@ -33,10 +54,17 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
     # set seed for random number generators in pytorch, numpy and python.random
     if cfg.get("seed"):
         pl.seed_everything(cfg.seed, workers=True)
+    
+    sm_training_env = get_training_env()
+    
+    cfg.datamodule.train_data_dir = train_channel
+    cfg.datamodule.test_data_dir = test_channel
+    cfg.datamodule.val_data_dir = val_channel
+    cfg.datamodule.num_workers = num_cpus
+    cfg.logger.save_dir = ml_root / "output" / "tensorboard" / sm_training_env["job_name"]
 
-    log.info(f"Instantiating datamodule <{cfg.datamodule._target_}>")
+    log.info(f"Instantiating datamodule <{cfg.datamodule._target_}>")    
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
-    datamodule.prepare_data()
     datamodule.setup()
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
@@ -72,7 +100,11 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
 
     train_metrics = trainer.callback_metrics
 
-
+    model.idx_to_class = datamodule.idx_to_class
+    script = model.to_torchscript()
+    # save for use in production environment
+    torch.jit.save(script, sm_model_dir / "model.scripted.pt")
+    
     return train_metrics, object_dict
 
 
