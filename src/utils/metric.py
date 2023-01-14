@@ -99,4 +99,5 @@ def calc_metric(model: LightningModule, datamodule: LightningDataModule, log_cm:
     recall = Recall(task="multiclass", average="micro", num_classes=6)
     metric_dict["recall"] = recall(preds, targets).item()
     
+    print(":: -> ", metric_dict)
     return metric_dict
