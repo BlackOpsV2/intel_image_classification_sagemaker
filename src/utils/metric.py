@@ -52,12 +52,14 @@ def plot_confusion_matrix(
     return img
 
 
-def calc_metric(model: LightningModule, datamodule: LightningDataModule):
+def calc_metric(model: LightningModule, datamodule: LightningDataModule, log_cm: bool = False, valset=False):
     model = model.to(device)
 
     preds = []
     targets = []
-    for batch in datamodule.test_dataloader():
+    dataloader = datamodule.val_dataloader() if valset else datamodule.test_dataloader()
+    
+    for batch in dataloader:
         x, y = batch
         x, y = x.to(device), y.to(device)
 
@@ -75,22 +77,26 @@ def calc_metric(model: LightningModule, datamodule: LightningDataModule):
     cm = confmat(preds, targets)
     print(cm)
 
-    cm = cm.cpu().detach().numpy()
-    fig = plot_confusion_matrix(cm, datamodule.classes)
-    fig = torch.tensor(np.transpose(fig, (2, 0, 1)))
-    model.logger.experiment.add_image("comfution_matrix", fig, 0)
+    if log_cm:
+        cm = cm.cpu().detach().numpy()
+        fig = plot_confusion_matrix(cm, datamodule.classes)
+        fig = torch.tensor(np.transpose(fig, (2, 0, 1)))
+        model.logger.experiment.add_image("comfution_matrix", fig, 0)
 
+    metric_dict = {}
     f1 = F1Score(task="multiclass", num_classes=6)
-    print(":: F1 Score -> ", f1(preds, targets).item())
+    metric_dict["f1_score"] =- f1(preds, targets).item()
 
     precision = Precision(task="multiclass", average="micro", num_classes=6)
-    print(":: Precission (micro)-> ", precision(preds, targets).item())
+    metric_dict["precission_micro"] = precision(preds, targets).item()
 
     precision = Precision(task="multiclass", average="macro", num_classes=6)
-    print(":: Precission (macro)-> ", precision(preds, targets).item())
+    metric_dict["precission_macro"] = precision(preds, targets).item()
 
     precision = Precision(task="multiclass", average="weighted", num_classes=6)
-    print(":: Precission (weighted)-> ", precision(preds, targets).item())
+    metric_dict["precission_weighted"] = precision(preds, targets).item()
 
     recall = Recall(task="multiclass", average="micro", num_classes=6)
-    print(":: Recall -> ", recall(preds, targets).item())
+    metric_dict["recall"] = recall(preds, targets).item()
+    
+    return metric_dict
