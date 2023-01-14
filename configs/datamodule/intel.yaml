@@ -3,6 +3,6 @@ root_data_dir: ${paths.data_dir}
 train_data_dir: null
 test_data_dir: null
 val_data_dir: null
-batch_size: 64
+batch_size: 32
 num_workers: 8
 pin_memory: False
