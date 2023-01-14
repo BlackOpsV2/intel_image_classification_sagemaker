@@ -98,9 +98,15 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         log.info("Starting training!")
         trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"))
 
+    utils.calc_metric(model, datamodule, True, True)
+    
     train_metrics = trainer.callback_metrics
 
     model.idx_to_class = datamodule.idx_to_class
+    
+    # storing weights state dict 
+    trainer.save_checkpoint(sm_model_dir / "last.ckpt")
+    
     script = model.to_torchscript()
     # save for use in production environment
     torch.jit.save(script, sm_model_dir / "model.scripted.pt")
