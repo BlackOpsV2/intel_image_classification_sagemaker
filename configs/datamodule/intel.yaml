@@ -1,5 +1,4 @@
 _target_: src.datamodules.intelimage_datamodule.IntelImgClfDataModule
-root_data_dir: ${paths.data_dir}
 train_data_dir: null
 test_data_dir: null
 val_data_dir: null
