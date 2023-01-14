@@ -61,7 +61,7 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
     cfg.datamodule.test_data_dir = test_channel
     cfg.datamodule.val_data_dir = val_channel
     cfg.datamodule.num_workers = num_cpus
-    cfg.logger.save_dir = ml_root / "output" / "tensorboard" / sm_training_env["job_name"]
+    cfg.logger.tensorboard.save_dir = ml_root / "output" / "tensorboard" / sm_training_env["job_name"]
 
     log.info(f"Instantiating datamodule <{cfg.datamodule._target_}>")    
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
