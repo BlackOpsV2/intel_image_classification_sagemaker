@@ -2,6 +2,7 @@ import pyrootutils
 
 root = pyrootutils.setup_root(__file__, pythonpath=True)
 
+import argparse
 import os
 import subprocess
 from pathlib import Path
@@ -23,7 +24,7 @@ git_email = os.environ.get("GIT_EMAIL", "sagemaker-processing@example.com")
 ml_root = Path("/opt/ml/processing")
 
 dataset_zip = ml_root / "input" / "intel_imageclf.zip"
-storage_path = ml_root / "kaggle_intel_image_classification"
+git_path = ml_root / "kaggle_intel_image_classification"
 
 
 def configure_git():
@@ -31,7 +32,7 @@ def configure_git():
     subprocess.check_call(["git", "config", "--global", "user.name", f'"{git_user}"'])
 
 
-def clone_dvc_git_repo(dvc_repo_url: str, git_path: Path):
+def clone_dvc_git_repo():
     print(f"\t:: Cloning repo: {dvc_repo_url}")
 
     repo = Repo.clone_from(dvc_repo_url, git_path.absolute())
@@ -39,7 +40,7 @@ def clone_dvc_git_repo(dvc_repo_url: str, git_path: Path):
     return repo
 
 
-def sync_data_with_dvc(repo, git_path: Path, dvc_branch: str):
+def sync_data_with_dvc(repo):
     os.chdir(git_path)
     print(f":: Create branch {dvc_branch}")
     try:
@@ -69,26 +70,30 @@ def sync_data_with_dvc(repo, git_path: Path, dvc_branch: str):
 
 @hydra.main(version_base="1.3", config_path="configs", config_name="train.yaml")
 def main(cfg: DictConfig):
-    # set seed for random number generators in pytorch, numpy and python.random
-    if cfg.get("seed"):
-        pl.seed_everything(cfg.seed, workers=True)
+
+    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
+    datamodule.prepare_data(dataset_zip, git_path)
+    
+    
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
 
     # setup git
     print(":: Configuring Git")
     configure_git()
-
-    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
-
     print(":: Cloning Git")
-    repo = clone_dvc_git_repo(dvc_repo_url, storage_path)
-
-    datamodule.prepare_data(dataset_zip, storage_path)
+    repo = clone_dvc_git_repo()
     
+    main()
+    
+    print(":: copy data to train")
+    subprocess.check_call(
+        "cp -r /opt/ml/processing/kaggle_intel_image_classification/dataset/* /opt/ml/processing/dataset/",
+        shell=True,
+    )
+
     print(":: Sync Processed Data to Git & DVC")
-    sync_data_with_dvc(repo, storage_path, dvc_branch)
+    sync_data_with_dvc(repo)
     print(":: finished pre processing dataset")
     
-    
-if __name__ == '__main__':
-    main()
     
