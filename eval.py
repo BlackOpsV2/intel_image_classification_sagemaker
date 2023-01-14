@@ -1,12 +1,6 @@
 import pyrootutils
 
-root = pyrootutils.setup_root(
-    search_from=__file__,
-    indicator=[".git", "pyproject.toml"],
-    pythonpath=True,
-    dotenv=True,
-)
-
+root = pyrootutils.setup_root(__file__, pythonpath=True)
 
 from typing import List, Tuple
 
