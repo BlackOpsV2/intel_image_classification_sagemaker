@@ -23,7 +23,7 @@ git_email = os.environ.get("GIT_EMAIL", "sagemaker-processing@example.com")
 ml_root = Path("/opt/ml/processing")
 
 dataset_zip = ml_root / "input" / "intel_imageclf.zip"
-storage_path = ml_root / "sagemaker-intelimageclf"
+storage_path = ml_root / "kaggle_intel_image_classification"
 
 
 def configure_git():
