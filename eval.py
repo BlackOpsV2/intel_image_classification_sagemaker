@@ -4,6 +4,7 @@ root = pyrootutils.setup_root(__file__, pythonpath=True)
 
 import json
 import os 
+import tarfile
 from pathlib import Path
 from typing import List, Tuple
 
@@ -34,6 +35,10 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
     Returns:
         Tuple[dict, dict]: Dict with metrics and dict with all instantiated objects.
     """
+
+    model_path = "/opt/ml/processing/model/model.tar.gz"
+    with tarfile.open(model_path) as tar:
+        tar.extractall(path=".")
 
     log.info(f"Instantiating datamodule <{cfg.datamodule._target_}>")
     
