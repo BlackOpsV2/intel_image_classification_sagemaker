@@ -72,7 +72,7 @@ def sync_data_with_dvc(repo):
 def main(cfg: DictConfig):
 
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
-    datamodule.prepare_data(dataset_zip, git_path)
+    datamodule.prepare_data(dataset_zip=dataset_zip, storage_dir=git_path)
     
     
 if __name__ == '__main__':

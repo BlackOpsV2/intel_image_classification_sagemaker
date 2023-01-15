@@ -92,43 +92,48 @@ class IntelImgClfDataModule(pl.LightningDataModule):
     def idx_to_class(self) -> dict:
         return {k: v for v, k in self.data_train.class_to_idx.items()}
 
-    def prepare_data(self, dataset_zip: Path, storage_dir: Path):
+    def prepare_data(self, **kwargs):
         """Download data if needed.
         Do not use it to assign state (self.x = y).
         """
-        dataset_extracted = dataset_zip.parent / "intel-image-classification"
+        if not kwargs:
+            return None
+        else:
+            dataset_zip = kwargs["dataset_zip"]
+            storage_dir = kwargs["storage_dir"]
+            dataset_extracted = dataset_zip.parent / "intel-image-classification"
 
-        # split dataset and save to their directories
-        print(f":: Extracting Zip {dataset_zip} to {dataset_extracted}")
-        extract_archive(from_path=dataset_zip, to_path=dataset_extracted)
+            # split dataset and save to their directories
+            print(f":: Extracting Zip {dataset_zip} to {dataset_extracted}")
+            extract_archive(from_path=dataset_zip, to_path=dataset_extracted)
 
-        ds = list((dataset_extracted / "seg_train" / "seg_train").glob("*/*"))
-        ds += list((dataset_extracted / "seg_test" / "seg_test").glob("*/*"))
+            ds = list((dataset_extracted / "seg_train" / "seg_train").glob("*/*"))
+            ds += list((dataset_extracted / "seg_test" / "seg_test").glob("*/*"))
 
-        labels = [x.parent.stem for x in ds]
-        print(":: Dataset Class Counts: ", Counter(labels))
+            labels = [x.parent.stem for x in ds]
+            print(":: Dataset Class Counts: ", Counter(labels))
 
-        d_train, d_test = train_test_split(ds, test_size=0.3, stratify=labels)
-        d_test, d_val = train_test_split(
-            d_test, test_size=0.5, stratify=[x.parent.stem for x in d_test]
-        )
+            d_train, d_test = train_test_split(ds, test_size=0.3, stratify=labels)
+            d_test, d_val = train_test_split(
+                d_test, test_size=0.5, stratify=[x.parent.stem for x in d_test]
+            )
 
-        print(
-            "\t:: Train Dataset Class Counts: ",
-            Counter(x.parent.stem for x in d_train),
-        )
-        print(
-            "\t:: Test Dataset Class Counts: ",
-            Counter(x.parent.stem for x in d_test),
-        )
-        print(
-            "\t:: Val Dataset Class Counts: ", Counter(x.parent.stem for x in d_val)
-        )
+            print(
+                "\t:: Train Dataset Class Counts: ",
+                Counter(x.parent.stem for x in d_train),
+            )
+            print(
+                "\t:: Test Dataset Class Counts: ",
+                Counter(x.parent.stem for x in d_test),
+            )
+            print(
+                "\t:: Val Dataset Class Counts: ", Counter(x.parent.stem for x in d_val)
+            )
 
-        print(":: Writing Datasets")
-        write_dataset(d_train, storage_dir / "dataset" / "train")
-        write_dataset(d_test, storage_dir / "dataset" / "test")
-        write_dataset(d_val, storage_dir / "dataset" / "val")
+            print(":: Writing Datasets")
+            write_dataset(d_train, storage_dir / "dataset" / "train")
+            write_dataset(d_test, storage_dir / "dataset" / "test")
+            write_dataset(d_val, storage_dir / "dataset" / "val")
         
 
     def setup(self, stage: Optional[str] = None):
