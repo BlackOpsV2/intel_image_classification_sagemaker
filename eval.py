@@ -48,7 +48,8 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
     cfg.datamodule.num_workers = os.cpu_count()
     
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
-
+    datamodule.setup()
+    
     model = LitModule.load_from_checkpoint(checkpoint_path='last.ckpt')
     
     log.info("Instantiating loggers...")
