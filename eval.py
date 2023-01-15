@@ -8,10 +8,12 @@ from pathlib import Path
 from typing import List, Tuple
 
 import hydra
+import torch
 from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, LightningModule, Trainer
 from pytorch_lightning.loggers import LightningLoggerBase
 
+from src.models.timm_module import LitModule
 from src import utils
 
 log = utils.get_pylogger(__name__)
@@ -42,9 +44,7 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
     
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
 
-    log.info(f"Instantiating model <{cfg.model._target_}>")
-    model: LightningModule = hydra.utils.instantiate(cfg.model)
-    model.load_state_dict("last.ckpt")
+    model = LitModule.load_from_checkpoint(checkpoint_path='last.ckpt')
     
     log.info("Instantiating loggers...")
     logger: List[LightningLoggerBase] = utils.instantiate_loggers(cfg.get("logger"))
