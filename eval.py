@@ -2,8 +2,9 @@ import pyrootutils
 
 root = pyrootutils.setup_root(__file__, pythonpath=True)
 
+import gc
 import json
-import os 
+import os
 import tarfile
 from pathlib import Path
 from typing import List, Tuple
@@ -14,8 +15,8 @@ from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, LightningModule, Trainer
 from pytorch_lightning.loggers import LightningLoggerBase
 
-from src.models.timm_module import LitModule
 from src import utils
+from src.models.timm_module import LitModule
 
 log = utils.get_pylogger(__name__)
 
@@ -25,7 +26,6 @@ model_artifacts = ml_root / "processing" / "model"
 dataset_dir = ml_root / "processing" / "test"
 
 
-@utils.task_wrapper
 def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
     """Evaluates given checkpoint on a datamodule testset.
     This method is wrapped in optional @task_wrapper decorator which applies extra utilities
@@ -74,6 +74,12 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
     trainer.test(model=model, datamodule=datamodule)
 
     test_res = trainer.callback_metrics
+    
+    # clear memory
+    del trainer
+    gc.collect()
+    torch.cuda.empty_cache()
+    
     metric_dict = utils.calc_metric(model, datamodule)
     
     report_dict = {
