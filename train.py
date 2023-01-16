@@ -32,7 +32,7 @@ val_channel = os.environ.get("SM_CHANNEL_VAL")
 def get_training_env():
     sm_training_env = os.environ.get("SM_TRAINING_ENV")
     sm_training_env = json.loads(sm_training_env)
-    
+
     return sm_training_env
 
 
@@ -54,16 +54,18 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
     # set seed for random number generators in pytorch, numpy and python.random
     if cfg.get("seed"):
         pl.seed_everything(cfg.seed, workers=True)
-    
+
     sm_training_env = get_training_env()
-    
+
     cfg.datamodule.train_data_dir = train_channel
     cfg.datamodule.test_data_dir = test_channel
     cfg.datamodule.val_data_dir = val_channel
     cfg.datamodule.num_workers = num_cpus
-    cfg.logger.tensorboard.save_dir = ml_root / "output" / "tensorboard" / sm_training_env["job_name"]
+    cfg.logger.tensorboard.save_dir = (
+        ml_root / "output" / "tensorboard" / sm_training_env["job_name"]
+    )
 
-    log.info(f"Instantiating datamodule <{cfg.datamodule._target_}>")    
+    log.info(f"Instantiating datamodule <{cfg.datamodule._target_}>")
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
     datamodule.setup()
 
@@ -99,18 +101,18 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"))
 
     utils.calc_metric(model, datamodule, True, True)
-    
+
     train_metrics = trainer.callback_metrics
 
     model.idx_to_class = datamodule.idx_to_class
-    
-    # storing weights state dict 
+
+    # storing weights state dict
     trainer.save_checkpoint(sm_model_dir / "last.ckpt")
-    
+
     script = model.to_torchscript()
     # save for use in production environment
     torch.jit.save(script, sm_model_dir / "model.scripted.pt")
-    
+
     return train_metrics, object_dict
 
 

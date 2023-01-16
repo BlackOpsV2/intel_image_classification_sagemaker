@@ -51,11 +51,11 @@ class IntelImgClfDataModule(pl.LightningDataModule):
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
-        
+
         self.train_data_dir = train_data_dir
         self.test_data_dir = test_data_dir
         self.val_data_dir = val_data_dir
-        
+
         # data transformations
         self.train_transforms = A.Compose(
             [
@@ -134,7 +134,6 @@ class IntelImgClfDataModule(pl.LightningDataModule):
             write_dataset(d_train, storage_dir / "dataset" / "train")
             write_dataset(d_test, storage_dir / "dataset" / "test")
             write_dataset(d_val, storage_dir / "dataset" / "val")
-        
 
     def setup(self, stage: Optional[str] = None):
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.

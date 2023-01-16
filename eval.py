@@ -41,20 +41,19 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
         tar.extractall(path=".")
 
     log.info(f"Instantiating datamodule <{cfg.datamodule._target_}>")
-    
+
     cfg.datamodule.train_data_dir = dataset_dir.absolute()
     cfg.datamodule.test_data_dir = dataset_dir.absolute()
     cfg.datamodule.val_data_dir = dataset_dir.absolute()
     cfg.datamodule.num_workers = os.cpu_count()
-    
+
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
     datamodule.setup()
-    
-    model: LightningModule = LitModule.load_from_checkpoint(checkpoint_path='last.ckpt')
-    
+
+    model: LightningModule = LitModule.load_from_checkpoint(checkpoint_path="last.ckpt")
+
     log.info("Instantiating loggers...")
     logger: List[LightningLoggerBase] = utils.instantiate_loggers(cfg.get("logger"))
-
 
     object_dict = {
         "cfg": cfg,
@@ -65,25 +64,23 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
 
     log.info("Starting testing!")
     metric_dict = utils.calc_metric(model, datamodule)
-    
+
     report_dict = {
-        "multiclass_classification_metrics": {
-            **metric_dict
-        },
+        "multiclass_classification_metrics": {**metric_dict},
     }
-    
+
     gc.collect()
-    
+
     eval_folder = ml_root / "processing" / "evaluation"
     eval_folder.mkdir(parents=True, exist_ok=True)
-    
+
     out_path = eval_folder / "evaluation.json"
-    
+
     print(f":: Writing to {out_path.absolute()}")
-    
+
     with out_path.open("w") as f:
         f.write(json.dumps(report_dict))
-        
+
     return metric_dict, object_dict
 
 

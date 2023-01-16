@@ -9,11 +9,9 @@ from torchmetrics import ConfusionMatrix, F1Score, Precision, Recall, Accuracy
 from pytorch_lightning import LightningDataModule, LightningModule
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device('cpu')
 
-def plot_confusion_matrix(
-    cm, classes, title="Confusion matrix", cmap=plt.cm.Blues
-):
+
+def plot_confusion_matrix(cm, classes, title="Confusion matrix", cmap=plt.cm.Blues):
     """
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
@@ -25,7 +23,7 @@ def plot_confusion_matrix(
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks, classes, rotation=45)
     plt.yticks(tick_marks, classes)
-    
+
     thresh = cm.max() / 2.0
 
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
@@ -52,14 +50,19 @@ def plot_confusion_matrix(
     return img
 
 
-def calc_metric(model: LightningModule, datamodule: LightningDataModule, log_cm: bool = False, valset=False):
+def calc_metric(
+    model: LightningModule,
+    datamodule: LightningDataModule,
+    log_cm: bool = False,
+    valset=False,
+):
     model = model.to(device)
     model.eval()
-    
+
     preds = []
     targets = []
     dataloader = datamodule.val_dataloader() if valset else datamodule.test_dataloader()
-    
+
     acc = Accuracy(task="multiclass", num_classes=6)
     criterion = torch.nn.CrossEntropyLoss()
     with torch.no_grad():
@@ -68,16 +71,16 @@ def calc_metric(model: LightningModule, datamodule: LightningDataModule, log_cm:
             x, y = x.to(device), y.to(device)
 
             p = model(x)
-            logits = p if i==0 else torch.concat([logits, p])
+            logits = p if i == 0 else torch.concat([logits, p])
 
             _, p = torch.max(p, 1)
-            
+
             preds.extend(p.tolist())
             targets.extend(y.tolist())
 
     preds = torch.tensor(preds)
     targets = torch.tensor(targets)
-    
+
     confmat = ConfusionMatrix(task="multiclass", num_classes=6)
     print(":: Confusion Matrix ->")
     cm = confmat(preds, targets)
@@ -91,20 +94,20 @@ def calc_metric(model: LightningModule, datamodule: LightningDataModule, log_cm:
 
     acc_score = acc(preds, targets)
     loss = criterion(logits, targets)
-    
     per_class_accuracy = cm.diagonal() / cm.sum(axis=1)
-    print(per_class_accuracy.tolist())
     metric_dict = {
         "accuracy": {
-                "value": acc_score.item(),
-                "per_class_accuracy": {c: a for c,a in zip(datamodule.classes, per_class_accuracy.tolist())},
-                "standard_deviation": per_class_accuracy.std().item(),
+            "value": acc_score.item(),
+            "per_class_accuracy": {
+                c: a for c, a in zip(datamodule.classes, per_class_accuracy.tolist())
             },
-        "loss": loss.item()
+            "standard_deviation": per_class_accuracy.std().item(),
+        },
+        "loss": loss.item(),
     }
-                   
+
     f1 = F1Score(task="multiclass", num_classes=6)
-    metric_dict["f1_score"] =- f1(preds, targets).item()
+    metric_dict["f1_score"] = -f1(preds, targets).item()
 
     precision = Precision(task="multiclass", average="micro", num_classes=6)
     metric_dict["precission_micro"] = precision(preds, targets).item()
@@ -117,6 +120,6 @@ def calc_metric(model: LightningModule, datamodule: LightningDataModule, log_cm:
 
     recall = Recall(task="multiclass", average="micro", num_classes=6)
     metric_dict["recall"] = recall(preds, targets).item()
-    
+
     print(":: Eval Metrices-> ", metric_dict)
     return metric_dict

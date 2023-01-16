@@ -73,9 +73,9 @@ def main(cfg: DictConfig):
 
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
     datamodule.prepare_data(dataset_zip=dataset_zip, storage_dir=git_path)
-    
-    
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # setup git
@@ -83,9 +83,9 @@ if __name__ == '__main__':
     configure_git()
     print(":: Cloning Git")
     repo = clone_dvc_git_repo()
-    
+
     main()
-    
+
     print(":: copy data to train")
     subprocess.check_call(
         "cp -r /opt/ml/processing/kaggle_intel_image_classification/dataset/* /opt/ml/processing/dataset/",
@@ -95,5 +95,3 @@ if __name__ == '__main__':
     print(":: Sync Processed Data to Git & DVC")
     sync_data_with_dvc(repo)
     print(":: finished pre processing dataset")
-    
-    
