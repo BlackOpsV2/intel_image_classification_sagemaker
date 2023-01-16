@@ -50,47 +50,29 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
     datamodule.setup()
     
-    model = LitModule.load_from_checkpoint(checkpoint_path='last.ckpt')
+    model: LightningModule = LitModule.load_from_checkpoint(checkpoint_path='last.ckpt')
     
     log.info("Instantiating loggers...")
     logger: List[LightningLoggerBase] = utils.instantiate_loggers(cfg.get("logger"))
 
-    log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
-    trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=logger)
 
     object_dict = {
         "cfg": cfg,
         "datamodule": datamodule,
         "model": model,
         "logger": logger,
-        "trainer": trainer,
     }
 
-    if logger:
-        log.info("Logging hyperparameters!")
-        utils.log_hyperparameters(object_dict)
-
     log.info("Starting testing!")
-    trainer.test(model=model, datamodule=datamodule)
-
-    test_res = trainer.callback_metrics
-    
-    # clear memory
-    del trainer
-    gc.collect()
-    torch.cuda.empty_cache()
-    
     metric_dict = utils.calc_metric(model, datamodule)
     
     report_dict = {
         "multiclass_classification_metrics": {
-            "accuracy": {
-                "value": test_res["test/acc"],
-                "standard_deviation": "0",
-            },
             **metric_dict
         },
     }
+    
+    gc.collect()
     
     eval_folder = ml_root / "processing" / "evaluation"
     eval_folder.mkdir(parents=True, exist_ok=True)
