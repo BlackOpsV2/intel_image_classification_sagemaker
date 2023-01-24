@@ -7,8 +7,13 @@
 temp.py
 tmp.py
 images/
-logs/
 data/**
+
+# logs
+logs/
 runs/
 **.log
+
+# exclude models
 *.ckpt
+*.pt
