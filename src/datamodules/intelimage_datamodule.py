@@ -146,7 +146,10 @@ class IntelImgClfDataModule(pl.LightningDataModule):
                     annotations = csv.reader(f, delimiter=',')
                     for _, _, _, choice, image,	_, _, _ in tqdm(annotations):
                         image = Path(image).name
-                        shutil.copyfile(pred_dir / image, storage_dir / "dataset" / "train"/ choice / image)
+                        src = pred_dir / image
+                        dst = storage_dir / "dataset" / "train"/ choice / image
+                        print(src, dst)
+                        shutil.copyfile(src, dst)
 
 
     def setup(self, stage: Optional[str] = None):
