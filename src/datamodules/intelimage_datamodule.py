@@ -3,6 +3,8 @@ if __name__ == "__main__":
 
     root = pyrootutils.setup_root(__file__, pythonpath=True)
 
+import csv
+import shutil
 from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -15,6 +17,7 @@ from albumentations.pytorch import ToTensorV2
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset
 from torchvision.datasets import ImageFolder
+from tqdm import tqdm
 
 from src.utils import extract_archive, write_dataset
 
@@ -134,6 +137,17 @@ class IntelImgClfDataModule(pl.LightningDataModule):
             write_dataset(d_train, storage_dir / "dataset" / "train")
             write_dataset(d_test, storage_dir / "dataset" / "test")
             write_dataset(d_val, storage_dir / "dataset" / "val")
+            
+            # write annotated data
+            if kwargs.get('csv_path'):
+                csv_path = kwargs['csv_path']
+                pred_dir = dataset_extracted / "seg_pred" / "seg_pred"
+                with open(csv_path, 'rb') as f:
+                    annotations = csv.reader(f, delimiter=',')
+                    for _, _, _, choice, image,	_, _, _ in tqdm(annotations):
+                        image = Path(image).name
+                        shutil.copyfile(pred_dir / image, storage_dir / "dataset" / "train"/ choice / image)
+
 
     def setup(self, stage: Optional[str] = None):
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
