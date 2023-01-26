@@ -24,6 +24,7 @@ git_email = os.environ.get("GIT_EMAIL", "sagemaker-processing@example.com")
 ml_root = Path("/opt/ml/processing")
 
 dataset_zip = ml_root / "input" / "intel_imageclf.zip"
+annotations_path = ml_root / "input" / "annotations"
 git_path = ml_root / "kaggle_intel_image_classification"
 
 
@@ -72,7 +73,7 @@ def sync_data_with_dvc(repo):
 def main(cfg: DictConfig):
 
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
-    datamodule.prepare_data(dataset_zip=dataset_zip, storage_dir=git_path)
+    datamodule.prepare_data(dataset_zip=dataset_zip, storage_dir=git_path, annotations_path=annotations_path)
 
 
 if __name__ == "__main__":

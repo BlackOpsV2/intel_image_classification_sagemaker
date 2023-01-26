@@ -3,7 +3,7 @@ if __name__ == "__main__":
 
     root = pyrootutils.setup_root(__file__, pythonpath=True)
 
-import csv
+import json
 import shutil
 from collections import Counter
 from pathlib import Path
@@ -139,17 +139,20 @@ class IntelImgClfDataModule(pl.LightningDataModule):
             write_dataset(d_val, storage_dir / "dataset" / "val")
             
             # write annotated data
-            if kwargs.get('csv_path'):
-                csv_path = kwargs['csv_path']
-                pred_dir = dataset_extracted / "seg_pred" / "seg_pred"
-                with open(csv_path, 'rb') as f:
-                    annotations = csv.reader(f, delimiter=',')
-                    for _, _, _, choice, image,	_, _, _ in tqdm(annotations):
-                        image = Path(image).name
-                        src = pred_dir / image
-                        dst = storage_dir / "dataset" / "train"/ choice / image
-                        print(src, dst)
-                        shutil.copyfile(src, dst)
+            annotations_path = kwargs.get('annotations_path')
+            if annotations_path:
+                annotations_path = Path(annotations_path)
+
+                for i in annotations_path.iterdir():
+                    annotations = json.load(open(i, 'r'))
+                    
+                    image = annotations['task']['data']['image'].split('/')[-1]
+                    choice = annotations['result'][0]['value']['choices'][0]
+
+                    src = dataset_extracted / "seg_pred" / "seg_pred" / image
+                    dst = storage_dir / "dataset" / "train"/ choice / image
+                    print(src, dst)
+                    shutil.copyfile(src, dst)
 
 
     def setup(self, stage: Optional[str] = None):
