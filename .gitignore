@@ -6,7 +6,6 @@
 .vscode
 temp.py
 tmp.py
-images/
 data/**
 
 # logs
