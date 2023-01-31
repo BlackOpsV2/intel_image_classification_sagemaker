@@ -75,7 +75,9 @@ model evaluation
       [  1,   0,   5,   8, 403,   1],
       [ 28,   3,   0,   0,   0, 401]]
 ```
-(tensorboard logs)(https://tensorboard.dev/experiment/jjSolIzpRtaHq8UX04bbAQ/#scalars)
+[tensorboard logs](https://tensorboard.dev/experiment/jjSolIzpRtaHq8UX04bbAQ/#scalars)
+  
+  
 ![](images/tensorboardpng.png)
 Confusion Matrix for validation set
 ![](images/cmpng.png)
