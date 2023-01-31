@@ -1,6 +1,8 @@
 # AWS SageMaker
 
 [project video](https://www.youtube.com/watch?v=IfmyDxgxcAw)
+
+
 Logged Model Metrics:
   - F1 Score
   - Precision
